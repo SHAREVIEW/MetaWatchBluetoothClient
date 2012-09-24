@@ -1,0 +1,84 @@
+﻿<Window x:Class="Bluetooth.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:System="clr-namespace:System;assembly=mscorlib" xmlns:Bluetooth="clr-namespace:Bluetooth"
+        Title="MainWindow" Height="420" Width="525" Closed="WindowClosed" Loaded="WindowLoaded">
+    <Window.Resources>
+        <ObjectDataProvider x:Key="StatusEnumData"
+                MethodName="GetValues" 
+                ObjectType="{x:Type System:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="Bluetooth:DiaryRecordStatuses" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider> 
+        <ObjectDataProvider x:Key="AlarmEnumData"
+                MethodName="GetValues" 
+                ObjectType="{x:Type System:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="Bluetooth:DiaryRecordAlarmTypes" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60*" />
+            <RowDefinition Height="321*" />
+        </Grid.RowDefinitions>
+        <Button Content="Подключение" Height="43" HorizontalAlignment="Left" Margin="12,12,0,0" Name="button1" VerticalAlignment="Top" Width="298" Click="Button1Click" />
+        <TabControl Name="tabControl1" Grid.Row="1">
+            <TabItem Header="Общие" Name="tabItem1">
+                <Grid>
+                    <Button Content="Получить напряжение" Height="38" HorizontalAlignment="Left" Margin="6,6,0,0" Name="button2" VerticalAlignment="Top" Width="150" Click="Button2Click" />
+                </Grid>
+            </TabItem>
+            <TabItem Header="Календарь" Name="tabItem2">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="243*" />
+                        <RowDefinition Height="42*" />
+                    </Grid.RowDefinitions>
+                    <DataGrid AutoGenerateColumns="False" Name="dataGrid1"  FrozenColumnCount="1">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Активно" />
+                            <DataGridTextColumn Binding="{Binding Id}" Header="ID" />
+                            <DataGridComboBoxColumn SelectedItemBinding="{Binding Status}" 
+                                                     ItemsSource="{Binding Source={StaticResource StatusEnumData}, Mode=OneWay}" Header="Статус" />
+                            <DataGridComboBoxColumn Header="Напоминание" 
+                                                    SelectedItemBinding="{Binding Alarm}" 
+                                                    ItemsSource="{Binding Source={StaticResource AlarmEnumData}, Mode=OneWay}"/>
+                            
+                            <DataGridTemplateColumn Header="Дата и время">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DateTime}"/><!-- , StringFormat='MMM yyyy' -->
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+
+                                        <xctk:DateTimePicker Value="{Binding DateTime}">
+
+                                        </xctk:DateTimePicker>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Binding="{Binding Value}" Header="Событие" />
+                        </DataGrid.Columns>
+                        <DataGrid.RowDetailsTemplate>
+                            <DataTemplate>
+                                <Border Margin="10" Padding="10" BorderBrush="SteelBlue"
+                         BorderThickness="2" CornerRadius="5">
+                                    <TextBlock Text="{Binding Path=Value}" TextWrapping="Wrap" 
+                         FontSize="10" MaxWidth="350"></TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </DataGrid.RowDetailsTemplate>
+                    </DataGrid>
+                    <Button Content="Записать в часы" Grid.Row="1" Height="27" HorizontalAlignment="Left" Margin="254,7,0,0" Name="bUpload" VerticalAlignment="Top" Width="170" Click="button3_Click" />
+                    <Button Content="Сохранить" Grid.Row="1" Height="28" HorizontalAlignment="Left" Margin="59,7,0,0" Name="bSave" VerticalAlignment="Top" Width="164" Click="button4_Click" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

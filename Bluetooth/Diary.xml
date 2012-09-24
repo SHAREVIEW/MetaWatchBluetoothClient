@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<Diary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Rec Id="0" Status="EveryMonth" Alarm="Vibrate" DateTime="2012-09-28T09:00:00">ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш</Rec>
+  <Rec Id="1" Status="Once" Alarm="Vibrate" DateTime="2002-05-30T09:00:00">
+    ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш
+  </Rec>
+  <Rec Id="2" Status="Once" Alarm="Vibrate" DateTime="2002-05-30T09:00:00">
+    ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш
+  </Rec>
+  <Rec Id="3" Status="Once" Alarm="None" DateTime="2002-05-30T09:00:00">
+    ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш
+  </Rec>
+  <Rec Id="4" Status="Once" Alarm="None" DateTime="2002-05-30T09:00:00">
+    ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш
+  </Rec>
+  <Rec Id="5" Status="Once" Alarm="Vibrate" DateTime="2002-05-30T09:00:00">
+    ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш
+  </Rec>
+  <Rec Id="6" Status="Once" Alarm="None" DateTime="2002-05-30T09:00:00">
+    ДЛОроав ывлаорф лфоыва шгнфышграфлдоаврш
+  </Rec>
+
+</Diary>
