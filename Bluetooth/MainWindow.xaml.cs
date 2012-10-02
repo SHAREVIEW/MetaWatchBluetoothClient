@@ -57,7 +57,7 @@ namespace Bluetooth
             {
                 while (true)
                 {
-                    BtProtocol.OutStream.ReadTimeout = 1000;
+                    BtProtocol.OutStream.ReadTimeout = 2000000;
                     var startByte = BtProtocol.OutStream.ReadByte();
                     if (startByte != 1)
                         continue;
@@ -344,6 +344,7 @@ namespace Bluetooth
 
         private void button3_Click(object sender, RoutedEventArgs e)
         {
+            BtProtocol.UploadDiary(_diary);
         }
         
     }

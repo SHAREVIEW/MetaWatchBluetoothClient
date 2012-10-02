@@ -543,7 +543,7 @@ namespace Bluetooth
 //        processSendQueue();
     }
 
-    public void UploadDiary(Diary diary)
+    public static void UploadDiary(Diary diary)
     {
         //  DiaryWriteRecord = 0xbd,
         // Options = 0 (3-8 бит - номер ячейки)
@@ -557,7 +557,7 @@ namespace Bluetooth
         // Options = 1 (3-8 бит - номер ячейки)
         // Запись второй части данных (текст)
 
-        for (var i = 0; i < diary.Rec.Count; i++)
+        for (var i = 0; i < 13 && i < diary.Rec.Count; i++)//!diary.Rec.Count
         {
             var bytes = new byte[12];
 
@@ -579,8 +579,9 @@ namespace Bluetooth
             MetaWatchService.inputOutputStream.Write(bytes, 0, bytes.Length);
             MetaWatchService.inputOutputStream.Write(crc, 0, crc.Length);
 
+            Thread.Sleep(200);
             // Запись текста
-            bytes = new byte[30];
+            bytes = new byte[27];
 
             bytes[0] = BtMessage.Start;
             bytes[1] = (byte)(bytes.Length + 2); // length
@@ -588,8 +589,9 @@ namespace Bluetooth
             bytes[3] = (byte) (0x80 | (byte)i);
 
             var encoding = new ASCIIEncoding();
-            var messageBytes = encoding.GetBytes(diary.Rec[i].Value);
-            for (var j = 0; j < 26 && j < messageBytes.Length; j++)
+            var tmpTxt = diary.Rec[i].Value.ToUpper();
+            var messageBytes = Encoding.GetEncoding(1251).GetBytes(tmpTxt); //encoding.GetBytes(diary.Rec[i].Value);
+            for (var j = 0; j < 21 && j < messageBytes.Length; j++)
             {
                 bytes[4 + j] = messageBytes[j];
             }
@@ -598,6 +600,29 @@ namespace Bluetooth
 
             MetaWatchService.inputOutputStream.Write(bytes, 0, bytes.Length);
             MetaWatchService.inputOutputStream.Write(crc, 0, crc.Length);
+            Thread.Sleep(200);
+
+
+            /*bytes = new byte[12];
+
+            bytes[0] = BtMessage.Start;
+            bytes[1] = (byte)(bytes.Length + 2); // length
+            bytes[2] = (byte)BtMessage.Message.DiaryWriteRecord;
+            bytes[3] = (byte)(i + 1);
+            bytes[4] = (byte)diary.Rec[i + 1].Status;
+            bytes[5] = (byte)diary.Rec[i + 1].Alarm;
+            bytes[6] = (byte)(diary.Rec[i + 1].DateTime.Year - 2012);
+            bytes[7] = (byte)(diary.Rec[i + 1].DateTime.Month);
+            bytes[8] = (byte)(diary.Rec[i + 1].DateTime.Day);
+            bytes[9] = (byte)(diary.Rec[i + 1].DateTime.DayOfWeek);
+            bytes[10] = (byte)(diary.Rec[i + 1].DateTime.Hour);
+            bytes[11] = (byte)(diary.Rec[i + 1].DateTime.Minute);
+
+            crc = Crc(bytes);
+
+            MetaWatchService.inputOutputStream.Write(bytes, 0, bytes.Length);
+            MetaWatchService.inputOutputStream.Write(crc, 0, crc.Length);
+            */
         }
 
     }

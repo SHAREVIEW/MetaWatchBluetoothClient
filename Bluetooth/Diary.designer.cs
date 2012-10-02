@@ -509,6 +509,9 @@ namespace Bluetooth
     {
 
         /// <remarks/>
+        Empty,
+
+        /// <remarks/>
         Once,
 
         /// <remarks/>
