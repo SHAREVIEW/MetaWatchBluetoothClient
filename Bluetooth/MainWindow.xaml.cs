@@ -38,13 +38,13 @@ namespace Bluetooth
 
             var addr = BluetoothAddress.Parse("d0:37:61:c4:cb:25");
 
-            
+
             var serviceClass = BluetoothService.SerialPort;
             var ep = new BluetoothEndPoint(addr, serviceClass);
             _bluetoothClient = new BluetoothClient();
 
             _bluetoothClient.Connect(ep);
-//            Stream peerStream = cli.GetStream();
+            //            Stream peerStream = cli.GetStream();
 
             BtProtocol.OutStream = _bluetoothClient.GetStream();
             MetaWatchService.inputOutputStream = BtProtocol.OutStream;
@@ -53,7 +53,7 @@ namespace Bluetooth
             BtProtocol.OutStream.Flush();
 
 
-            _readThread = new Thread(()=>
+            _readThread = new Thread(() =>
             {
                 while (true)
                 {
@@ -62,9 +62,15 @@ namespace Bluetooth
                     if (startByte != 1)
                         continue;
                     var msgLen = BtProtocol.OutStream.ReadByte();
+                    if (msgLen < 6)
+                    {
+                        MessageBox.Show("Ошибка приёма");
+                        continue;
+                    }
                     var msgType = BtProtocol.OutStream.ReadByte();
                     var msgOptions = BtProtocol.OutStream.ReadByte();
                     var msgDataLen = msgLen - 6;
+
                     var data = new byte[msgDataLen];
                     BtProtocol.OutStream.Read(data, 0, msgDataLen);
 
@@ -79,7 +85,14 @@ namespace Bluetooth
                             switch (data[0])
                             {
                                 case 2:
-                                    MessageBox.Show("Цифровые!");
+                                    Dispatcher.Invoke(new Action(delegate
+                                    {
+
+                                        sbiConnect.Content = "Подключено!";
+
+                                    }), System.Windows.Threading.DispatcherPriority.Normal);
+
+                                    //MessageBox.Show("Цифровые!");
                                     break;
                             }
                             break;
@@ -102,7 +115,7 @@ namespace Bluetooth
                             break;
                         case (int)BtMessage.Message.ReadBatteryVoltageResponse:
                             var powerGood = data[0];
-                            var batteryCharging = data[1]; 
+                            var batteryCharging = data[1];
                             var voltage = (data[3] << 8) | data[2];
                             var voltageAverage = (data[5] << 8) | data[4];
                             MessageBox.Show(string.Format("volt:{0} avg:{1} powerGood:{2} batteryCharging: {3}",
@@ -110,21 +123,21 @@ namespace Bluetooth
                             break;
                     }
 
-                    
+
                 }
             });
             _readThread.Start();
-//            var buf = new byte[2];
-//            var readLen = peerStream.Read(buf, 0, buf.Length);
-//            if (readLen == 2)
-//            {
-//                MessageBox.Show(buf[1].ToString());
-//            }
+            //            var buf = new byte[2];
+            //            var readLen = peerStream.Read(buf, 0, buf.Length);
+            //            if (readLen == 2)
+            //            {
+            //                MessageBox.Show(buf[1].ToString());
+            //            }
 
 
-//    peerStream.Write/Read ...
-//
-//e.g.
+            //    peerStream.Write/Read ...
+            //
+            //e.g.
             /*var buf = new byte[1000];
             var readLen = peerStream.Read(buf, 0, buf.Length);
             if (readLen == 0)
@@ -266,6 +279,7 @@ namespace Bluetooth
                 // Diary
                 DiaryIsEmptyRecord = 0xbc,
                 DiaryWriteRecord = 0xbd,
+                DiaryWriteEnd = 0xbe,
 
                 LedChange = 0xc0,
 
@@ -289,7 +303,7 @@ namespace Bluetooth
 
             bytes[0] = BtMessage.Start;
             bytes[1] = (byte)(bytes.Length + 2); // length
-            bytes[2] = (byte) BtMessage.Message.GetDeviceType;
+            bytes[2] = (byte)BtMessage.Message.GetDeviceType;
             bytes[3] = 0;
 
             outStream.Write(bytes, 0, bytes.Length);
@@ -324,10 +338,10 @@ namespace Bluetooth
 
         private void WindowClosed(object sender, EventArgs e)
         {
-           if(_readThread != null && _readThread.IsAlive)
-           {
-               _readThread.Abort();
-           }
+            if (_readThread != null && _readThread.IsAlive)
+            {
+                _readThread.Abort();
+            }
         }
 
         private Diary _diary;
@@ -346,7 +360,226 @@ namespace Bluetooth
         {
             BtProtocol.UploadDiary(_diary);
         }
-        
+
+        private static long MkFullTime(int year, int month, int day, int hour, int min)
+        {
+            // до 2047 года будет работать, потом надо что-нить придумать
+            return ((long)year << 21) | ((long)month << 17) | ((long)day << 12) | ((long)hour << 6) | min;
+        }
+
+
+        int[] eventIndexes = new int[3]; // 3 индекса событий, которые отображаются на экране
+        int[] diaryEventStatus = new int[4]; // 0 - текущий, Остальные для 3х событий на экране
+        int[] diaryEventYear = new int[4];
+        int[] diaryEventMonth = new int[4];
+        int[] diaryEventDay = new int[4];
+        DayOfWeek[] diaryEventDow = new DayOfWeek[4];
+        int[] diaryEventHour = new int[4];
+        int[] diaryEventMin = new int[4];
+        string[] diaryEventText = new string[4];
+        // RTCYEAR RTCMON  RTCDOW RTCDAY
+        // Если событие в эту дату, возвращается 1
+        // hour, min - событие должно быть после этогов ремени
+        int LoadDiaryEvent(int eventIndex, int year,
+                                  int month, DayOfWeek weekday,
+                                  int day,
+                                  int hour, int min)
+        {
+            var curFullTime = MkFullTime(year, month, day, hour, min);
+            // NUMBER_OF_DIARY_RECORDS записей по 32 символа
+            // 0 байт - статус (3)  0 - пустая ячейка 1 - одноразово 2 - каждый год
+            //                      3 - День рождения
+            //                      4 - каждый месяц 5 - каждую неделю
+            //                      6 - каждый день
+            //   вид напоминания (2) 0 - без напоминания
+            //                      1 - вибро
+            //   начало года     (3)
+            // 1,2 - дата - [год(4бита от 1900 года), мес(4 бита)], день[(5бит) день недели(3 бита)]
+            // 3,4 - время
+            diaryEventStatus[0] = (int)_diary.Rec[eventIndex].Status;
+            if (diaryEventStatus[0] == 0)
+            {
+                return 0;
+            }
+
+            var tempYear = _diary.Rec[eventIndex].DateTime.Year;
+            diaryEventYear[0] = tempYear;
+            diaryEventMonth[0] = _diary.Rec[eventIndex].DateTime.Month;
+            diaryEventDay[0] = _diary.Rec[eventIndex].DateTime.Day;
+            diaryEventDow[0] = _diary.Rec[eventIndex].DateTime.DayOfWeek;
+            diaryEventHour[0] = _diary.Rec[eventIndex].DateTime.Hour;
+            diaryEventMin[0] = _diary.Rec[eventIndex].DateTime.Minute;
+            diaryEventText[0] = _diary.Rec[eventIndex].Value;
+
+            var eventFullTime = MkFullTime(
+                diaryEventYear[0], 
+                diaryEventMonth[0], 
+                diaryEventDay[0],
+                diaryEventHour[0],
+                diaryEventMin[0]);
+
+
+            // Если повторы, то год текущий ставим
+            if (diaryEventStatus[0] >= 2 && diaryEventStatus[0] <= 6)
+            {
+                // Если год события меньше текущего, то выравниваем
+                // То есть событие началось раньше
+                if (eventFullTime <= curFullTime)
+                    diaryEventYear[0] = year;
+            }
+            // Если повторы чаще, чем раз в год, то месяц текущий
+            if (diaryEventStatus[0] >= 4 && diaryEventStatus[0] <= 6)
+            {
+                // Если месяц события меньше текущего и год этот же, то месяц выравниваем
+                if (eventFullTime <= curFullTime)
+                    diaryEventMonth[0] = month;
+            }
+            // Если повторы каждую неделю и день недели совпадает, то день текущий
+            if (diaryEventStatus[0] == 5)
+            {
+                // день недели совпадает и месяц и год равны текущим и дата меньше сегодняшней
+                if (diaryEventDow[0] == weekday
+                    && (eventFullTime <= curFullTime))
+                    diaryEventDay[0] = day;
+            }
+            // Если повторы каждый день, то день текущий
+            // Если год и месяц сегодняшние и дата раньше
+            if (diaryEventStatus[0] == 6)
+            {
+                if (eventFullTime <= curFullTime)
+                    diaryEventDay[0] = day;
+            }
+            if (diaryEventYear[0] == year && diaryEventMonth[0] == month
+               && diaryEventDay[0] == day)// && diaryEventHour[0]
+            {
+                if (diaryEventHour[0] > hour || (diaryEventHour[0] == hour && diaryEventMin[0] >= min))
+                {
+//                    if (diaryEventStatus[0] == 3) // Если тип - день рождения
+//                    { // То год ставим рождения
+//                        diaryEventYear[0] = tempYear;
+//                    }
+                    return 1;
+                }
+                else
+                    return 0;
+            }
+            else return 0;
+        }
+
+        void Sort()
+        {
+            var curDate = DateTime.Now;
+            var curYear = curDate.Year;
+            var curMonth = curDate.Month;
+
+            var startDay = curDate.Day;
+            var startHour = curDate.Hour;
+            var startMin = curDate.Minute;
+            
+              // Очистка
+              for(var i = 0; i < 3; i++)
+              {
+                diaryEventYear[i + 1] = 0;
+                eventIndexes[i] = 0;
+              }
+
+            // Сортируем события
+
+            for (var month = 0; month <= 3; month++)
+            {
+                // Сколько дней в месяце
+                var days = DateTime.DaysInMonth(curYear, curMonth);
+                for (var day = startDay; day <= days; day++)
+                {
+                    // Получаем день недели
+                    var curDOW = (new DateTime(curYear, curMonth, day)).DayOfWeek;
+                    for (var i = 0; i < _diary.Rec.Count; i++)
+                    {
+                        if (LoadDiaryEvent(i, curYear, curMonth, curDOW, day, startHour, startMin) == 1)
+                        {
+                            for (var j = 0; j < 3; j++)
+                            {
+                                // Если ячейка не занята, занять!
+                                if (diaryEventYear[j + 1] == 0)
+                                {
+                                    diaryEventYear[j + 1] = diaryEventYear[0];
+                                    diaryEventMonth[j + 1] = diaryEventMonth[0];
+                                    diaryEventDay[j + 1] = diaryEventDay[0];
+                                    eventIndexes[j] = i;
+                                    break;
+                                }
+                                else
+                                {
+                                    // Если событие раньше, чем записанное, занять ячейку и переместить записанное событие дальше
+                                    if (diaryEventYear[0] < diaryEventYear[j + 1]
+                                       || (diaryEventYear[0] == diaryEventYear[j + 1] && diaryEventMonth[0] < diaryEventMonth[j + 1])
+                                       || (diaryEventYear[0] == diaryEventYear[j + 1] && diaryEventMonth[0] == diaryEventMonth[j + 1] && diaryEventDay[0] < diaryEventDay[j + 1]))
+                                    {
+                                        if (j < 2) // сдвигаем остальные ячейки вправо
+                                        {
+                                            for (var k = 2; k > j; k--)
+                                            {
+                                                diaryEventYear[k + 1] = diaryEventYear[k + 1 - 1];
+                                                diaryEventMonth[k + 1] = diaryEventMonth[k + 1 - 1];
+                                                diaryEventDay[k + 1] = diaryEventDay[k + 1 - 1];
+                                                eventIndexes[k] = eventIndexes[k - 1];
+                                            }
+                                        }
+                                        // Записываем событие в освободившуюся ячейку
+                                        diaryEventYear[j + 1] = diaryEventYear[0];
+                                        diaryEventMonth[j + 1] = diaryEventMonth[0];
+                                        diaryEventDay[j + 1] = diaryEventDay[0];
+                                        eventIndexes[j] = i;
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    // Если в третьей ячейке записано год больше 0, то заканчиваем
+                    if (diaryEventYear[3] > 0)
+                        return;
+
+                    // После текущего дня ищем события, которые могут быть в любое время
+                    startHour = 0;
+                    startMin = 0;
+                } // day
+                if (curMonth == 12)
+                {
+                    curYear++;
+                    curMonth = 1;
+                }
+                else
+                {
+                    curMonth++;
+                }
+                startDay = 1;
+            } // month
+
+        }
+
+        private void ButtonClick1(object sender, RoutedEventArgs e)
+        {
+            Sort();
+
+            // Вывод
+            lbQueue.Items.Clear();
+            for (var i = 0; i < 3; i++)
+            {
+                if (diaryEventYear[i + 1] > 0)
+                {
+                    var str = string.Format("{0}.{1}.{2} {3}",
+                                            diaryEventDay[i + 1],
+                                            diaryEventMonth[i + 1],
+                                            diaryEventYear[i + 1],
+                                            _diary.Rec[eventIndexes[i]].Value);
+
+                    lbQueue.Items.Add(str);
+                }
+                
+            }
+        }
+
     }
 
 

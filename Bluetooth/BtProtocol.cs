@@ -557,9 +557,11 @@ namespace Bluetooth
         // Options = 1 (3-8 бит - номер ячейки)
         // Запись второй части данных (текст)
 
+        byte[] bytes, crc;
+
         for (var i = 0; i < 13 && i < diary.Rec.Count; i++)//!diary.Rec.Count
         {
-            var bytes = new byte[12];
+            bytes = new byte[12];
 
             bytes[0] = BtMessage.Start;
             bytes[1] = (byte)(bytes.Length + 2); // length
@@ -567,14 +569,14 @@ namespace Bluetooth
             bytes[3] = (byte) i;
             bytes[4] = (byte) diary.Rec[i].Status;
             bytes[5] = (byte) diary.Rec[i].Alarm;
-            bytes[6] = (byte) (diary.Rec[i].DateTime.Year - 2012);
-            bytes[7] = (byte) (diary.Rec[i].DateTime.Month);
+            bytes[6] = (byte) (diary.Rec[i].DateTime.Year - 1900);
+            bytes[7] = (byte) (diary.Rec[i].DateTime.Month); 
             bytes[8] = (byte) (diary.Rec[i].DateTime.Day);
             bytes[9] = (byte) (diary.Rec[i].DateTime.DayOfWeek);
             bytes[10] = (byte) (diary.Rec[i].DateTime.Hour);
             bytes[11] = (byte) (diary.Rec[i].DateTime.Minute);
 
-            var crc = Crc(bytes);
+            crc = Crc(bytes);
 
             MetaWatchService.inputOutputStream.Write(bytes, 0, bytes.Length);
             MetaWatchService.inputOutputStream.Write(crc, 0, crc.Length);
@@ -588,8 +590,8 @@ namespace Bluetooth
             bytes[2] = (byte)BtMessage.Message.DiaryWriteRecord;
             bytes[3] = (byte) (0x80 | (byte)i);
 
-            var encoding = new ASCIIEncoding();
-            var tmpTxt = diary.Rec[i].Value.ToUpper();
+            //var encoding = new ASCIIEncoding();
+            var tmpTxt = diary.Rec[i].Value.Trim().ToUpper();
             var messageBytes = Encoding.GetEncoding(1251).GetBytes(tmpTxt); //encoding.GetBytes(diary.Rec[i].Value);
             for (var j = 0; j < 21 && j < messageBytes.Length; j++)
             {
@@ -625,6 +627,17 @@ namespace Bluetooth
             */
         }
 
+            bytes = new byte[7];
+
+            bytes[0] = BtMessage.Start;
+            bytes[1] = (byte)(bytes.Length + 2); // length
+            bytes[2] = (byte)BtMessage.Message.DiaryWriteEnd;
+            bytes[3] = 0;
+
+            crc = Crc(bytes);
+
+            MetaWatchService.inputOutputStream.Write(bytes, 0, bytes.Length);
+            MetaWatchService.inputOutputStream.Write(crc, 0, crc.Length);
     }
 
 

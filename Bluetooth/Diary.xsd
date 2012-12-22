@@ -25,6 +25,7 @@
       <xs:enumeration value="Empty" />      
       <xs:enumeration value="Once" />
       <xs:enumeration value="EveryYear" />
+      <xs:enumeration value="BirthDay" />
       <xs:enumeration value="EveryMonth" />
       <xs:enumeration value="EveryWeek" />
       <xs:enumeration value="EveryDay" />

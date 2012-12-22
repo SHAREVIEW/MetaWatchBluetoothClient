@@ -130,6 +130,7 @@ namespace Bluetooth
             // Diary
             DiaryIsEmptyRecord = 0xbc,
             DiaryWriteRecord = 0xbd,
+            DiaryWriteEnd = 0xbe,
 
             LedChange = 0xc0,
 

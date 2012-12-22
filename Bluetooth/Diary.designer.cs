@@ -518,6 +518,9 @@ namespace Bluetooth
         EveryYear,
 
         /// <remarks/>
+        BirthDay,
+
+        /// <remarks/>
         EveryMonth,
 
         /// <remarks/>
